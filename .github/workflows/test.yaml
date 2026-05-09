@@ -24,3 +24,6 @@ jobs:
 
       - name: Run Playwright tests
         run: npx playwright test
+        env:
+          URL_FIRST: ${{ secrets.URL_FIRST }}
+          URL_SECOND: ${{ secrets.URL_SECOND }}
