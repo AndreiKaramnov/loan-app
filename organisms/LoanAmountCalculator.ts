@@ -44,4 +44,7 @@ export class LoanAmountCalculator {
         await expect(this.monthlyPayment).toBeInViewport();
         await this.applyBtn.toBeInViewportElement();
     }
+    async checkMonthlyPaymentValue(expectedValue: string): Promise<void> {
+        await expect(this.monthlyPayment).toContainText(expectedValue);
+    }
 }
