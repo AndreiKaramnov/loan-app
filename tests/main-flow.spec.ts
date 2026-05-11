@@ -54,13 +54,26 @@ import {LoanDetails} from "../pom/LoanDetailsPage";
 
 test('Critical path', async ({ page }) => {
     const loanPage = new LoanPage(page);
+
+    await page.route("**/api/loan-calc**", async route => {
+        // if (route.request().method() === "POST") await route.continue();
+        // const response = await route.fetch();
+        // const json = await response.json();
+        // expect (json.paymentAmountMonthly).toBeGreaterThan(0);
+        console.log(route.request().url());
+        await route.fulfill({status: 200, json: {paymentAmountMonthly: 1}, contentType: 'application/json'});
+    })
     await loanPage.goTo();
     await loanPage.checkElementsVisible();
     await loanPage.checkElementsToBeInViewport();
     await loanPage.checkButtonsEnabled();
+
     await loanPage.calculator.inputAmount.fill('500');
+    const loanCalcResponse = page.waitForResponse('**/api/loan-calc?**');
     await loanPage.calculator.inputPeriod.selectOption('24');
+    await loanCalcResponse;
     await loanPage.calculator.applyBtn.click();
+
     await loanPage.popupContainer.checkPopupElements();
     await loanPage.popupContainer.checkElementsToBeInViewport();
     await loanPage.popupContainer.continueButton.checkBtnEnabled(false);
@@ -88,4 +101,58 @@ test('Incorrect amount error', async ({ page }) => {
     await loanPage.calculator.inputPeriod.selectOption('24');
     await page.waitForTimeout(3000);
     await loanPage.calculator.checkError();
+})
+test('UI shows error when loan calc returns 500 without body', async ({ page }) => {
+    const loanPage = new LoanPage(page);
+
+    await page.route("**/api/loan-calc**", async route => {
+       await route.fulfill({
+           status: 500,
+       })
+    })
+    const responsePromise = page.waitForResponse('**/api/loan-calc?**');
+    await loanPage.goTo();
+    await loanPage.calculator.inputAmount.fill('500');
+    await loanPage.calculator.inputPeriod.selectOption('24');
+    await loanPage.calculator.applyBtn.click();
+
+    await responsePromise;
+    await loanPage.calculator.checkError();
+})
+test('UI shows error when loan calc returns 200 without body', async ({ page }) => {
+    const loanPage = new LoanPage(page);
+
+    await page.route("**/api/loan-calc**", async route => {
+        await route.fulfill({
+            status: 200,
+            json: {}
+        })
+    })
+    const responsePromise = page.waitForResponse('**/api/loan-calc?**');
+    await loanPage.goTo();
+    await loanPage.calculator.inputAmount.fill('500');
+    await loanPage.calculator.inputPeriod.selectOption('24');
+    await loanPage.calculator.applyBtn.click();
+
+    await responsePromise;
+    await loanPage.calculator.checkMonthlyPaymentValue('undefined');
+})
+test('UI shows error when loan calc returns 200 with wrong response key', async ({ page }) => {
+    const loanPage = new LoanPage(page);
+
+    await page.route("**/api/loan-calc**", async route => {
+        await route.fulfill({
+            status: 200,
+            json: {wrongKey: 1},
+            contentType: 'application/json',
+        })
+    })
+    const responsePromise = page.waitForResponse('**/api/loan-calc?**');
+    await loanPage.goTo();
+    await loanPage.calculator.inputAmount.fill('500');
+    await loanPage.calculator.inputPeriod.selectOption('24');
+    await loanPage.calculator.applyBtn.click();
+
+    await responsePromise;
+    await loanPage.calculator.checkMonthlyPaymentValue('undefined');
 })
